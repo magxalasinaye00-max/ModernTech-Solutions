@@ -1,38 +1,96 @@
-# MTS_project
+# ModernTech HR Management System (Frontend Prototype)
 
-This template should help get you started developing with Vue 3 in Vite.
+## Overview
+ModernTech HR Management System is a **front-end prototype** of an HR web application designed for ModernTech Solutions.  
+The app demonstrates basic HR functionalities including:
 
-## Recommended IDE Setup
+- Employee management
+- Payroll processing
+- Attendance and leave tracking
+- Performance reviews with charts
+- User authentication (login/logout)
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+> This project is a **proof-of-concept** using Vue 3, Vuex, and Bootstrap. All data is stored locally (dummy data and localStorage).
 
-## Recommended Browser Setup
+---
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+## Features
 
-## Customize configuration
+### Employee Management
+- View all employees
+- Search employees by name, position, or department
+- Add or delete employee records
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+### Payroll
+- Display payroll data with hours worked, leave deductions, and final salary
+- Automates calculations (based on dummy data)
 
-## Project Setup
+### Attendance & Leave Requests
+- Track employee attendance
+- Submit and approve/deny leave requests
+- Data persists in localStorage
 
-```sh
+### Performance Reviews
+- Add reviews for employees (rating + comments)
+- View review history
+- Average rating chart (bar chart)
+
+### Authentication
+- Simple login/logout system
+- Access control for dashboard and routes
+
+---
+
+## Technologies Used
+- **Vue 3** – frontend framework  
+- **Vuex** – state management  
+- **Bootstrap 5** – responsive design  
+- **Chart.js** – data visualization for performance reviews  
+- **LocalStorage** – simulate persistent storage
+
+## Installation
+1. Clone the repository:
+  bash
+git clone <your-repo-url>
+cd ModernTech-Solutions
+cd MTS_project
+
+2. Install dependencies:
 npm install
-```
 
-### Compile and Hot-Reload for Development
-
-```sh
+3. Run the app locally:
 npm run dev
-```
 
-### Compile and Minify for Production
+4. Open in browser:
+http://localhost:5173
 
-```sh
-npm run build
-```
+
+## USAGE
+
+1.LOGIN
+
+Email: lungile.moyo@moderntech.com
+
+Password: 2468
+
+2.DASHBOARD
+
+Navigate using the sidebar
+
+View employees, payroll, attendance, leave requests, and performance reviews
+
+3.ADD RECORDS
+
+Add employees, leave requests, attendance records, and performance reviews
+
+Charts update automatically for performance reviews
+
+## NOTES
+
+This is a front-end only application (no backend server)
+
+All data is stored in localStorage for demonstration purposes
+
+Designed for responsive use on desktop, tablets, and mobile devices
+
+Code is commented for clarity and future development

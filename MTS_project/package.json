@@ -15,6 +15,9 @@
     "lint": "run-s lint:*"
   },
   "dependencies": {
+    "bootstrap": "^5.3.8",
+    "chart.js": "^4.5.1",
+    "jspdf": "^3.0.4",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3",
     "vuex": "^4.1.0"
