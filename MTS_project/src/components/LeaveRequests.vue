@@ -1,5 +1,27 @@
 <template>
-  <div class="card shadow-sm p-3">
+  <div class="dashboard-container">
+    <!-- SIDEBAR -->
+    <aside :class="['sidebar', { collapsed: !sidebarOpen }]">
+      <button class="toggle-btn" @click="toggleSidebar">
+        {{ sidebarOpen ? '⟨' : '⟩' }}
+      </button>
+
+      <ul v-show="sidebarOpen" class="sidebar-menu">
+        <li><router-link to="/">Employees</router-link></li>
+        <li><router-link to="/payroll">Payroll</router-link></li>
+        <li><router-link to="/attendance">Attendance</router-link></li>
+        <li><router-link to="/leave">Leave</router-link></li>
+        <li><router-link to="/reviews">Performance Reviews</router-link></li>
+
+        <li class="logout-box">
+          <button class="logout-btn" @click="logoutUser">Logout</button>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+      <div class="card shadow-sm p-3">
     <h4 class="mb-3 fw-bold">Leave Requests</h4>
 
     <!-- Submit Form -->
@@ -21,7 +43,7 @@
           </select>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
           <input
             type="text"
             v-model="reason"
@@ -30,7 +52,15 @@
           />
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
+          <input
+            type="date"
+            v-model="leaveDate"
+            class="form-control form-control-sm"
+          />
+        </div>
+
+        <div class="col-md-2">
           <select v-model="requestStatus" class="form-select form-select-sm">
             <option value="Pending">Pending</option>
             <option value="Approved">Approved</option>
@@ -38,7 +68,7 @@
           </select>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
           <button class="btn btn-primary btn-sm w-100" @click="submitRequest">
             Submit Request
           </button>
@@ -114,8 +144,10 @@
           </tr>
         </tbody>
       </table>
-    </div>
+      </div>
 
+    </div>
+    </main>
   </div>
 </template>
 
@@ -125,7 +157,9 @@ export default {
     return {
       selectedEmployee: "",
       reason: "",
-      requestStatus: "Pending"
+      leaveDate: "",
+      requestStatus: "Pending",
+      sidebarOpen: true
     };
   },
 
@@ -145,7 +179,7 @@ export default {
     },
 
     submitRequest() {
-      if (!this.selectedEmployee || !this.reason) {
+      if (!this.selectedEmployee || !this.reason || !this.leaveDate) {
         alert("Please fill all fields.");
         return;
       }
@@ -153,12 +187,14 @@ export default {
       this.$store.dispatch("addLeaveRequest", {
         employeeId: this.selectedEmployee,
         reason: this.reason,
+        date: this.leaveDate,
         status: this.requestStatus
       });
 
       // Reset form
       this.selectedEmployee = "";
       this.reason = "";
+      this.leaveDate = "";
       this.requestStatus = "Pending";
     },
 
@@ -168,6 +204,15 @@ export default {
         id: req.id,
         status: newStatus
       });
+    },
+
+    toggleSidebar() {
+      this.sidebarOpen = !this.sidebarOpen;
+    },
+
+    logoutUser() {
+      this.$store.commit("auth/logout");
+      this.$router.push("/");
     }
   },
 
@@ -218,4 +263,89 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Dashboard Container */
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background-color: #1e1e2f;
+  color: white;
+  padding-top: 20px;
+  transition: width 0.3s;
+  position: relative;
+  border: none;
+  border-radius: 10px;
+}
+
+.sidebar.collapsed {
+  width: 20px;
+}
+
+.toggle-btn {
+  position: absolute;
+  top: 12px;
+  right: -18px;
+  background: #1e1e2f;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding-left: 0;
+}
+
+.sidebar-menu li {
+  margin: 18px 0;
+}
+
+.sidebar-menu a {
+  color: #d7d7e0;
+  text-decoration: none;
+  padding: 10px 18px;
+  display: block;
+  font-size: 0.95rem;
+  transition: 0.2s;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.router-link-active {
+  background: #2c2c44;
+  color: white;
+  border-radius: 6px;
+}
+
+.logout-box {
+  margin-top: 30px;
+  padding: 0 18px;
+}
+
+.logout-btn {
+  width: 100%;
+  padding: 8px 0;
+  background: #e63946;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  transition: 0.2s;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: #c71c30;
+}
+
+.main-content {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
 </style>

@@ -1,61 +1,83 @@
 <template>
-  <section class="pr-page">
-    <div class="header">
-      <h2>Performance Reviews</h2>
-      <p class="muted">Add reviews, see history and an at-a-glance employee average chart.</p>
-    </div>
+  <div class="dashboard-container">
+    <!-- SIDEBAR -->
+    <aside :class="['sidebar', { collapsed: !sidebarOpen }]">
+      <button class="toggle-btn" @click="toggleSidebar">
+        {{ sidebarOpen ? '⟨' : '⟩' }}
+      </button>
 
-    <div class="grid">
-      <!-- LEFT: form + history -->
-      <div class="col">
-        <div class="card">
-          <h4>Add Review</h4>
-          <select v-model.number="form.employeeId" class="input">
-            <option disabled value="">Select employee</option>
-            <option v-for="e in employees" :key="e.employeeId" :value="e.employeeId">
-              {{ e.name }} — {{ e.department }}
-            </option>
-          </select>
+      <ul v-show="sidebarOpen" class="sidebar-menu">
+        <li><router-link to="/">Employees</router-link></li>
+        <li><router-link to="/payroll">Payroll</router-link></li>
+        <li><router-link to="/attendance">Attendance</router-link></li>
+        <li><router-link to="/leave">Leave</router-link></li>
+        <li><router-link to="/reviews">Performance Reviews</router-link></li>
 
-          <input type="number" min="1" max="5" v-model.number="form.rating" class="input" placeholder="Rating 1–5" />
-          <textarea v-model="form.comments" class="input" placeholder="Comments (optional)"></textarea>
+        <li class="logout-box">
+          <button class="logout-btn" @click="logoutUser">Logout</button>
+        </li>
+      </ul>
+    </aside>
 
-          <div class="actions">
-            <button class="btn primary" @click="submitReview">Submit</button>
-            <button class="btn" @click="resetForm">Clear</button>
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+      <div class="header">
+        <h2>Performance Reviews</h2>
+        <p class="muted">Add reviews, see history and an at-a-glance employee average chart.</p>
+      </div>
+
+      <div class="grid">
+        <!-- LEFT: form + history -->
+        <div class="col">
+          <div class="card">
+            <h4>Add Review</h4>
+            <select v-model.number="form.employeeId" class="input">
+              <option disabled value="">Select employee</option>
+              <option v-for="e in employees" :key="e.employeeId" :value="e.employeeId">
+                {{ e.name }} — {{ e.department }}
+              </option>
+            </select>
+
+            <input type="number" min="1" max="5" v-model.number="form.rating" class="input" placeholder="Rating 1–5" />
+            <textarea v-model="form.comments" class="input" placeholder="Comments (optional)"></textarea>
+
+            <div class="actions">
+              <button class="btn primary" @click="submitReview">Submit</button>
+              <button class="btn" @click="resetForm">Clear</button>
+            </div>
+          </div>
+
+          <div class="card mt">
+            <h4>Review History</h4>
+            <table class="history">
+              <thead>
+                <tr><th>Employee</th><th>Rating</th><th>Comments</th><th>Date</th></tr>
+              </thead>
+              <tbody>
+                <tr v-if="!reviews || reviews.length === 0">
+                  <td colspan="4" class="muted">No reviews yet.</td>
+                </tr>
+                <tr v-for="r in reviewsSorted" :key="r.id">
+                  <td>{{ empName(r.employeeId) }}</td>
+                  <td><span class="rating-pill" :data-rating="r.rating">{{ r.rating }}</span></td>
+                  <td class="comments">{{ r.comments || '—' }}</td>
+                  <td class="muted small">{{ formatDate(r.date) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <div class="card mt">
-          <h4>Review History</h4>
-          <table class="history">
-            <thead>
-              <tr><th>Employee</th><th>Rating</th><th>Comments</th><th>Date</th></tr>
-            </thead>
-            <tbody>
-              <tr v-if="!reviews || reviews.length === 0">
-                <td colspan="4" class="muted">No reviews yet.</td>
-              </tr>
-              <tr v-for="r in reviewsSorted" :key="r.id">
-                <td>{{ empName(r.employeeId) }}</td>
-                <td><span class="rating-pill" :data-rating="r.rating">{{ r.rating }}</span></td>
-                <td class="comments">{{ r.comments || '—' }}</td>
-                <td class="muted small">{{ formatDate(r.date) }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- RIGHT: chart -->
+        <div class="col">
+          <div class="card chart-card">
+            <h4>Average Rating by Employee</h4>
+            <canvas id="reviewsChart" aria-label="Average rating chart"></canvas>
+          </div>
         </div>
       </div>
-
-      <!-- RIGHT: chart -->
-      <div class="col">
-        <div class="card chart-card">
-          <h4>Average Rating by Employee</h4>
-          <canvas id="reviewsChart" aria-label="Average rating chart"></canvas>
-        </div>
-      </div>
-    </div>
-  </section>
+    </main>
+  </div>
 </template>
 
 <script>
@@ -67,7 +89,8 @@ export default {
   data() {
     return {
       form: { employeeId: '', rating: null, comments: '' },
-      chart: null
+      chart: null,
+      sidebarOpen: true
     };
   },
   computed: {
@@ -111,7 +134,14 @@ export default {
       }
       this.chart = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Avg Rating', data, backgroundColor: palette }] }, options: { responsive: true, scales: { y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.parsed.y} / 5` } } } } });
     },
-    updateChart() { this.$nextTick(() => this.buildChart()); }
+    updateChart() { this.$nextTick(() => this.buildChart()); },
+    toggleSidebar() {
+      this.sidebarOpen = !this.sidebarOpen;
+    },
+    logoutUser() {
+      this.$store.commit("auth/logout");
+      this.$router.push("/");
+    }
   },
   mounted() { try { this.$store.dispatch('reviews/loadReviews'); } catch(e) {} this.updateChart(); },
   watch: { employees: 'updateChart', reviews: { handler: 'updateChart', deep: true } }
@@ -119,6 +149,93 @@ export default {
 </script>
 
 <style scoped>
+
+/* Dashboard Container */
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background-color: #1e1e2f;
+  color: white;
+  padding-top: 20px;
+  transition: width 0.3s;
+  position: relative;
+  border: none;
+  border-radius: 10px;
+}
+
+.sidebar.collapsed {
+  width: 20px;
+}
+
+.toggle-btn {
+  position: absolute;
+  top: 12px;
+  right: -18px;
+  background: #1e1e2f;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding-left: 0;
+}
+
+.sidebar-menu li {
+  margin: 18px 0;
+}
+
+.sidebar-menu a {
+  color: #d7d7e0;
+  text-decoration: none;
+  padding: 10px 18px;
+  display: block;
+  font-size: 0.95rem;
+  transition: 0.2s;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.router-link-active {
+  background: #2c2c44;
+  color: white;
+  border-radius: 6px;
+}
+
+.logout-box {
+  margin-top: 30px;
+  padding: 0 18px;
+}
+
+.logout-btn {
+  width: 100%;
+  padding: 8px 0;
+  background: #e63946;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  transition: 0.2s;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: #c71c30;
+}
+
+.main-content {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
+
 .pr-page { padding: 20px; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; color:#0f172a; }
 .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
 .muted { color:#6b7280; }
@@ -145,4 +262,5 @@ export default {
   .grid { grid-template-columns: 1fr; }
   .chart-card canvas { height:240px !important; }
 }
+
 </style>

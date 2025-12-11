@@ -183,10 +183,12 @@ export default {
   padding: 20px 0;
   position: relative;
   transition: 0.3s ease-in-out;
+  border: none;
+  border-radius: 10px;
 }
 
 .sidebar.collapsed {
-  width: 65px;
+  width: 20px;
 }
 
 .toggle-btn {
