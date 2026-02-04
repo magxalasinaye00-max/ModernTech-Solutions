@@ -1,6 +1,5 @@
 <template>
   <div class="dashboard-container">
-
     <!-- SIDEBAR -->
     <aside :class="['sidebar', { collapsed: !sidebarOpen }]">
       <button class="toggle-btn" @click="toggleSidebar">
@@ -22,7 +21,6 @@
 
     <!-- MAIN CONTENT AREA -->
     <main class="main-content">
-      
       <!-- HEADER -->
       <div class="header-section">
         <h2 class="title">ModernTech HR Dashboard</h2>
@@ -44,7 +42,10 @@
         <div class="card-body">
           <h4 class="card-title mb-3">Employee Directory</h4>
 
-          <table class="table table-hover modern-table text-center">
+          <div v-if="loading" class="loading">Loading employees...</div>
+          <p v-if="error" class="error">{{ error }}</p>
+
+          <table v-if="!loading && employees.length > 0" class="table table-hover modern-table text-center">
             <thead>
               <tr>
                 <th>ID</th>
@@ -58,16 +59,15 @@
             </thead>
 
             <tbody>
-              <tr v-for="x in filteredEmployees" :key="x.employeeId">
-                <td>{{ x.employeeId }}</td>
-                <td>{{ x.name }}</td>
-                <td>{{ x.position }}</td>
-                <td>{{ x.department }}</td>
-                <td>{{ x.employmentHistory }}</td>
-                <td>{{ x.contact }}</td>
-
+              <tr v-for="emp in filteredEmployees" :key="emp.id">
+                <td>{{ emp.id }}</td>
+                <td>{{ emp.name }}</td>
+                <td>{{ emp.position }}</td>
+                <td>{{ emp.department }}</td>
+                <td>{{ emp.employmentHistory }}</td>
+                <td>{{ emp.contact }}</td>
                 <td>
-                  <button class="btn btn-danger btn-sm" @click="deleteEmployee(x.employeeId)">
+                  <button class="btn btn-danger btn-sm" @click="handleDeleteEmployee(emp.id)">
                     Delete
                   </button>
                 </td>
@@ -75,8 +75,7 @@
             </tbody>
           </table>
 
-          <!-- NO EMPLOYEES -->
-          <p v-if="filteredEmployees.length === 0" class="text-muted text-center mt-3">
+          <p v-if="!loading && filteredEmployees.length === 0" class="text-muted text-center mt-3">
             No employees match your search.
           </p>
         </div>
@@ -85,13 +84,13 @@
       <!-- ADD EMPLOYEE -->
       <div class="card mt-4 p-3 shadow-sm">
         <h4 class="mb-3">Add New Employee</h4>
-
         <div class="add-employee-grid">
           <input v-model="newName" placeholder="Name" class="form-control" />
           <input v-model="newPosition" placeholder="Position" class="form-control" />
           <input v-model="newDepartment" placeholder="Department" class="form-control" />
+          <input v-model="newContact" placeholder="Contact" class="form-control" />
 
-          <button class="btn btn-primary" @click="addEmployee">
+          <button class="btn btn-primary" @click="handleAddEmployee">
             Add Employee
           </button>
         </div>
@@ -103,68 +102,95 @@
 </template>
 
 <script>
-import { employeeInformation } from "../assets/data/hrData.js";
+import { mapState, mapActions } from "vuex";
 
 export default {
   name: "Dashboard",
-
   data() {
     return {
-      staff: [...employeeInformation],
       searchQuery: "",
       newName: "",
       newPosition: "",
       newDepartment: "",
-      sidebarOpen: true
+      newContact: "",
+      sidebarOpen: true,
+      loading: true,
+      error: null
     };
   },
-
   computed: {
+    ...mapState(["employees"]),
     filteredEmployees() {
-      return this.staff.filter(emp =>
+      return this.employees.filter(emp =>
         emp.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
         emp.position.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
         emp.department.toLowerCase().includes(this.searchQuery.toLowerCase())
       );
     }
   },
-
+  async created() {
+    try {
+      await this.fetchEmployees();
+    } catch (err) {
+      this.error = "Failed to load employees.";
+      console.error(err);
+    } finally {
+      this.loading = false;
+    }
+  },
   methods: {
-    toggleSidebar() {
-      this.sidebarOpen = !this.sidebarOpen;
-    },
-
-    deleteEmployee(id) {
-      this.staff = this.staff.filter(emp => emp.employeeId !== id);
-    },
-
-    addEmployee() {
-      if (!this.newName || !this.newPosition || !this.newDepartment) {
+    ...mapActions(["fetchEmployees", "addEmployee", "deleteEmployee"]),
+    async handleAddEmployee() {
+      if (!this.newName || !this.newPosition || !this.newDepartment || !this.newContact) {
         alert("Please fill all fields");
         return;
       }
 
-      const newEmployee = {
-        employeeId: this.staff.length + 1,
-        name: this.newName,
-        position: this.newPosition,
-        department: this.newDepartment
-      };
+      try {
+        await this.addEmployee({
+          name: this.newName,
+          position: this.newPosition,
+          department: this.newDepartment,
+          contact: this.newContact,
+          employmentHistory: "New hire"
+        });
 
-      this.staff.push(newEmployee);
-
-      this.newName = "";
-      this.newPosition = "";
-      this.newDepartment = "";
+        // Reset form
+        this.newName = "";
+        this.newPosition = "";
+        this.newDepartment = "";
+        this.newContact = "";
+      } catch (err) {
+        this.error = "Error adding employee.";
+        console.error(err);
+      }
     },
-
+    async handleDeleteEmployee(id) {
+      try {
+        await this.deleteEmployee(id);
+      } catch (err) {
+        this.error = "Error deleting employee.";
+        console.error(err);
+      }
+    },
+    toggleSidebar() {
+      this.sidebarOpen = !this.sidebarOpen;
+    },
     logoutUser() {
-      this.$store.commit("auth/logout");
-      this.$router.push("/");
+      // Clear token and redirect
+      localStorage.removeItem("token");
+      window.location.href = "/";
     }
   }
 };
 </script>
+
+<style scoped>
+.loading { text-align: center; font-size: 1.1rem; color: #555; }
+.error { text-align: center; color: red; margin-top: 10px; }
+/* Keep your existing styles for sidebar, table, etc. */
+</style>
+
 
 <style scoped>
 /* Entire Layout */

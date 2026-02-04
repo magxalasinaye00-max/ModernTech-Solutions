@@ -1,236 +1,150 @@
 <template>
-  <div class="dashboard-container">
-    <!-- SIDEBAR -->
-    <aside :class="['sidebar', { collapsed: !sidebarOpen }]">
-      <button class="toggle-btn" @click="toggleSidebar">
-        {{ sidebarOpen ? '⟨' : '⟩' }}
-      </button>
-
-      <ul v-show="sidebarOpen" class="sidebar-menu">
-        <li><router-link to="/">Employees</router-link></li>
-        <li><router-link to="/payroll">Payroll</router-link></li>
-        <li><router-link to="/attendance">Attendance</router-link></li>
-        <li><router-link to="/leave">Leave</router-link></li>
-        <li><router-link to="/reviews">Performance Reviews</router-link></li>
-
-        <li class="logout-box">
-          <button class="logout-btn" @click="logoutUser">Logout</button>
-        </li>
-      </ul>
-    </aside>
-
-    <!-- MAIN CONTENT AREA -->
-    <main class="main-content">
-      <div class="card shadow-sm p-3">
-    <h4 class="mb-3 fw-bold">Leave Requests</h4>
+  <div class="leave-page">
+    <div class="header">
+      <h3>Leave Requests</h3>
+      <p class="muted">Submit and manage employee leave requests</p>
+    </div>
 
     <!-- Submit Form -->
-    <div class="card p-3 mb-4 form-card">
-      <h6 class="mb-3 fw-semibold">Submit Leave Request</h6>
-
+    <div class="form-card">
+      <h6>Submit Leave Request</h6>
       <div class="row g-2">
-
         <div class="col-md-3">
           <select v-model="selectedEmployee" class="form-select form-select-sm">
             <option disabled value="">Select Employee</option>
-            <option
-              v-for="e in employees"
-              :key="e.employeeId"
-              :value="e.employeeId"
-            >
+            <option v-for="e in employees" :key="e.id" :value="e.id">
               {{ e.name }}
             </option>
           </select>
         </div>
 
-        <div class="col-md-2">
-          <input
-            type="text"
-            v-model="reason"
-            class="form-control form-control-sm"
-            placeholder="Reason (e.g., Sick, Vacation)"
-          />
+        <div class="col-md-3">
+          <input type="text" v-model="reason" class="form-control form-control-sm" placeholder="Reason" />
         </div>
 
-        <div class="col-md-2">
-          <input
-            type="date"
-            v-model="leaveDate"
-            class="form-control form-control-sm"
-          />
+        <div class="col-md-3">
+          <input type="date" v-model="leaveDate" class="form-control form-control-sm" />
         </div>
 
-        <div class="col-md-2">
-          <select v-model="requestStatus" class="form-select form-select-sm">
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Denied">Denied</option>
-          </select>
-        </div>
-
-        <div class="col-md-2">
+        <div class="col-md-3">
           <button class="btn btn-primary btn-sm w-100" @click="submitRequest">
             Submit Request
           </button>
         </div>
-
       </div>
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     </div>
 
     <!-- Requests Table -->
-    <h6 class="fw-semibold">Leave Requests History</h6>
-
-    <div class="table-responsive">
-      <table class="table table-hover align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Employee</th>
-            <th>Reason</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th class="text-center">Action</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <tr v-if="leaveRequests.length === 0">
-            <td colspan="5" class="text-muted text-center">No leave requests found.</td>
-          </tr>
-
-          <tr v-for="req in leaveRequests" :key="req.id">
-            <td>{{ getEmployeeName(req.employeeId) }}</td>
-            <td>{{ req.reason }}</td>
-            <td>{{ req.date }}</td>
-
-            <!-- STATUS PILL -->
-            <td>
-              <span
-                class="status-pill"
-                :class="{
-                  approved: req.status === 'Approved',
-                  denied: req.status === 'Denied',
-                  pending: req.status === 'Pending'
-                }"
-              >
-                {{ req.status }}
-              </span>
-            </td>
-
-            <!-- ACTION BUTTONS -->
-            <td class="text-center">
-              <div class="d-flex gap-2 justify-content-center">
-
-                <!-- APPROVE -->
-                <button
-                  class="btn btn-success btn-sm"
-                  :disabled="req.status === 'Approved'"
-                  @click="setStatus(req, 'Approved')"
-                >
-                  Approve
-                </button>
-
-                <!-- DENY -->
-                <button
-                  class="btn btn-danger btn-sm"
-                  :disabled="req.status === 'Denied'"
-                  @click="setStatus(req, 'Denied')"
-                >
-                  Deny
-                </button>
-
-              </div>
-            </td>
-
-          </tr>
-        </tbody>
-      </table>
-      </div>
-
-    </div>
-    </main>
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Reason</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th class="text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-if="loading">
+          <td colspan="5" class="text-muted text-center">Loading leave requests...</td>
+        </tr>
+        <tr v-else-if="leaveRequests.length === 0">
+          <td colspan="5" class="text-muted text-center">No leave requests found.</td>
+        </tr>
+        <tr v-for="req in leaveRequests" :key="req.id">
+          <td>{{ getEmployeeName(req.employee_id) }}</td>
+          <td>{{ req.reason }}</td>
+          <td>{{ new Date(req.date).toLocaleDateString() }}</td>
+          <td>
+            <span class="status-pill" :class="req.status.toLowerCase()">
+              {{ req.status }}
+            </span>
+          </td>
+          <td class="text-center">
+            <button class="btn btn-success btn-sm" :disabled="req.status === 'Approved'" @click="updateStatus(req.id, 'Approved')">
+              Approve
+            </button>
+            <button class="btn btn-danger btn-sm" :disabled="req.status === 'Denied'" @click="updateStatus(req.id, 'Denied')">
+              Deny
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 
 <script>
+import { mapState, mapActions } from "vuex";
+
 export default {
   data() {
     return {
       selectedEmployee: "",
       reason: "",
       leaveDate: "",
-      requestStatus: "Pending",
-      sidebarOpen: true
+      loading: true,
+      errorMessage: null
     };
   },
-
   computed: {
-    employees() {
-      return this.$store.state.employees;
-    },
-    leaveRequests() {
-      return this.$store.state.leaveRequests || [];
+    ...mapState(["employees", "leaveRequests"])
+  },
+  async created() {
+    try {
+      await Promise.all([this.fetchEmployees(), this.fetchLeaveRequests()]);
+    } catch (err) {
+      this.errorMessage = "Failed to load leave requests.";
+      console.error(err);
+    } finally {
+      this.loading = false;
     }
   },
-
   methods: {
-    getEmployeeName(id) {
-      const emp = this.employees.find(e => e.employeeId === id);
-      return emp ? emp.name : "Unknown";
-    },
-
-    submitRequest() {
+    ...mapActions(["fetchEmployees", "fetchLeaveRequests", "addLeaveRequest", "updateLeaveStatus"]),
+    async submitRequest() {
       if (!this.selectedEmployee || !this.reason || !this.leaveDate) {
         alert("Please fill all fields.");
         return;
       }
-
-      this.$store.dispatch("addLeaveRequest", {
-        employeeId: this.selectedEmployee,
-        reason: this.reason,
-        date: this.leaveDate,
-        status: this.requestStatus
-      });
-
-      // Reset form
-      this.selectedEmployee = "";
-      this.reason = "";
-      this.leaveDate = "";
-      this.requestStatus = "Pending";
+      if (new Date(this.leaveDate) < new Date()) {
+        alert("Leave date cannot be in the past.");
+        return;
+      }
+      try {
+        await this.addLeaveRequest({
+          employee_id: this.selectedEmployee,
+          reason: this.reason,
+          date: this.leaveDate,
+          status: "Pending"
+        });
+        this.selectedEmployee = "";
+        this.reason = "";
+        this.leaveDate = "";
+      } catch (err) {
+        this.errorMessage = "Error submitting request.";
+        console.error(err);
+      }
     },
-
-    setStatus(req, newStatus) {
-      req.status = newStatus;
-      this.$store.commit("UPDATE_LEAVE_REQUEST", {
-        id: req.id,
-        status: newStatus
-      });
+    async updateStatus(id, newStatus) {
+      try {
+        await this.updateLeaveStatus({ id, status: newStatus });
+      } catch (err) {
+        this.errorMessage = "Error updating status.";
+        console.error(err);
+      }
     },
-
-    toggleSidebar() {
-      this.sidebarOpen = !this.sidebarOpen;
-    },
-
-    logoutUser() {
-      this.$store.commit("auth/logout");
-      this.$router.push("/");
+    getEmployeeName(id) {
+      const emp = this.employees.find(e => e.id === id);
+      return emp ? emp.name : "Unknown";
     }
-  },
-
-  mounted() {
-    this.$store.dispatch("loadLeaveRequestsFromStorage");
   }
 };
 </script>
 
 <style scoped>
-
-/* Form Card */
-.form-card {
-  background: #f8fafc;
-  border-left: 4px solid #4f46e5;
-}
-
-/* Status Pills */
 .status-pill {
   padding: 4px 10px;
   border-radius: 20px;
@@ -238,114 +152,8 @@ export default {
   font-weight: 600;
   color: #fff;
 }
-
-.status-pill.approved {
-  background: #10b981;
-}
-
-.status-pill.denied {
-  background: #ef4444;
-}
-
-.status-pill.pending {
-  background: #f59e0b;
-}
-
-/* Buttons */
-button.btn-sm {
-  padding: 4px 12px;
-  font-size: 0.75rem;
-  border-radius: 6px;
-}
-
-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* Dashboard Container */
-.dashboard-container {
-  display: flex;
-  min-height: 100vh;
-}
-
-/* Sidebar */
-.sidebar {
-  width: 220px;
-  background-color: #1e1e2f;
-  color: white;
-  padding-top: 20px;
-  transition: width 0.3s;
-  position: relative;
-  border: none;
-  border-radius: 10px;
-}
-
-.sidebar.collapsed {
-  width: 20px;
-}
-
-.toggle-btn {
-  position: absolute;
-  top: 12px;
-  right: -18px;
-  background: #1e1e2f;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-}
-
-.sidebar-menu {
-  list-style: none;
-  padding-left: 0;
-}
-
-.sidebar-menu li {
-  margin: 18px 0;
-}
-
-.sidebar-menu a {
-  color: #d7d7e0;
-  text-decoration: none;
-  padding: 10px 18px;
-  display: block;
-  font-size: 0.95rem;
-  transition: 0.2s;
-}
-
-.sidebar-menu a:hover,
-.sidebar-menu a.router-link-active {
-  background: #2c2c44;
-  color: white;
-  border-radius: 6px;
-}
-
-.logout-box {
-  margin-top: 30px;
-  padding: 0 18px;
-}
-
-.logout-btn {
-  width: 100%;
-  padding: 8px 0;
-  background: #e63946;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  transition: 0.2s;
-  cursor: pointer;
-}
-
-.logout-btn:hover {
-  background: #c71c30;
-}
-
-.main-content {
-  flex: 1;
-  padding: 32px;
-  overflow-y: auto;
-}
+.status-pill.approved { background: #10b981; }
+.status-pill.denied { background: #ef4444; }
+.status-pill.pending { background: #f59e0b; }
+.error { color: red; margin-top: 8px; font-size: 0.9rem; }
 </style>
