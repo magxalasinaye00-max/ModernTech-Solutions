@@ -10,8 +10,8 @@ const routes = [
   { 
     path: "/", 
     redirect: () => {
-      const isLoggedIn = localStorage.getItem("auth") === "true";
-      return isLoggedIn ? "/dashboard" : "/login";
+      const token = localStorage.getItem("token");
+      return token ? "/dashboard" : "/login";
     }
   }, 
   { 
@@ -58,13 +58,13 @@ const router = createRouter({
 
 // Auth guard
 router.beforeEach((to, from, next) => {
-  const isLoggedIn = localStorage.getItem("auth") === "true";
+  const token = localStorage.getItem("token");
   const requiresAuth = to.meta.requiresAuth;
 
-  if (requiresAuth && !isLoggedIn) {
+  if (requiresAuth && !token) {
     // Redirect to login if trying to access protected route without auth
     next("/login");
-  } else if (to.path === "/login" && isLoggedIn) {
+  } else if (to.path === "/login" && token) {
     // Redirect to dashboard if already logged in and trying to access login
     next("/dashboard");
   } else {

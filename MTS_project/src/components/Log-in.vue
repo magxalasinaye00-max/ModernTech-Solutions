@@ -1,56 +1,55 @@
 <template>
-  <div class="login-page">
-    <div class="card mx-auto mt-5" style="max-width:420px;">
-      <div class="card-body">
-        <h4 class="card-title text-center mb-3">Sign in</h4>
-
-        <div class="mb-2">
-          <label class="form-label">Email</label>
-          <input v-model="email" type="email" class="form-control" placeholder="you@company.com" />
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Password</label>
-          <input v-model="password" type="password" class="form-control" placeholder="Password" />
-        </div>
-
-        <div class="d-grid">
-          <button class="btn btn-primary" @click="loginUser">Login</button>
-        </div>
-
-        <p class="text-danger mt-3" v-if="errorMsg">{{ errorMsg }}</p>
+  <div class="login-container">
+    <h2>Login</h2>
+    <form @submit.prevent="handleLogin" class="login-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input v-model="email" type="email" placeholder="Enter email" required />
       </div>
-    </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input v-model="password" type="password" placeholder="Enter password" required />
+      </div>
+
+      <button type="submit" class="btn btn-primary">Login</button>
+
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+    </form>
   </div>
 </template>
 
 <script>
+import api from "../api"; // your axios instance
+
 export default {
   name: "Login",
-
   data() {
     return {
       email: "",
       password: "",
-      errorMsg: ""
+      errorMessage: ""
     };
   },
-
   methods: {
-    loginUser() {
-      const validEmail = "lungile.moyo@moderntech.com";
-      const validPassword = "2468";
+    async handleLogin() {
+      try {
+        const res = await api.post("/login", {
+          email: this.email,
+          password: this.password
+        });
 
-      if (this.email.trim().toLowerCase() === validEmail && this.password === validPassword) {
-
-        // CALL VUEX LOGIN
-        this.$store.commit("auth/login");
-
-        // Navigate to dashboard
-        this.$router.push("/dashboard");
-
-      } else {
-        this.errorMsg = "Incorrect login details";
+        if (res.data.success) {
+          // Save token in localStorage
+          localStorage.setItem("token", res.data.token);
+          // Redirect to dashboard
+          this.$router.push("/dashboard");
+        } else {
+          this.errorMessage = res.data.message || "Login failed.";
+        }
+      } catch (err) {
+        console.error("Login error:", err);
+        this.errorMessage = "Server error. Please try again.";
       }
     }
   }
@@ -58,7 +57,42 @@ export default {
 </script>
 
 <style scoped>
-.login-page {
-  padding: 24px;
+.login-container {
+  max-width: 400px;
+  margin: 60px auto;
+  padding: 20px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+.form-group {
+  margin-bottom: 14px;
+}
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+.btn-primary {
+  background: #3B82F6;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-primary:hover {
+  background: #2563EB;
+}
+.error {
+  margin-top: 10px;
+  color: red;
+  font-size: 0.9rem;
 }
 </style>
+

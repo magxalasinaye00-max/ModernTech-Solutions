@@ -1,122 +1,198 @@
 import { createStore } from "vuex";
-import { employeeInformation, payrollData, attendanceAndLeave, performanceReviews } from "../assets/data/hrData";
-
-// Helper to load from localStorage
-function loadFromStorage(key) {
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : null;
-  } catch (e) {
-    console.error(`Error loading ${key}:`, e);
-    return null;
-  }
-}
+import api from "../api";
 
 export default createStore({
   state() {
     return {
-      employees: employeeInformation,
-      payroll: payrollData,
-      attendance: attendanceAndLeave,
-      leaveRequests: loadFromStorage("leaveRequests") || [],
-      attendanceRecords: loadFromStorage("attendanceRecords") || []
+      employees: [],
+      payroll: [],
+      attendanceRecords: [],
+      leaveRequests: [],
+      loading: false,
+      error: null
     };
   },
 
   getters: {
-    getEmployees(state) { return state.employees; },
-    getPayroll(state) { return state.payroll; },
-    getAttendance(state) { return state.attendance; },
-    getLeaveRequests(state) { return state.leaveRequests; },
-    getAttendanceRecords(state) { return state.attendanceRecords; }
+    getEmployees: state => state.employees,
+    getPayroll: state => state.payroll,
+    getAttendanceRecords: state => state.attendanceRecords,
+    getLeaveRequests: state => state.leaveRequests,
+    isLoading: state => state.loading,
+    getError: state => state.error
   },
 
   mutations: {
-    SET_LEAVE_REQUESTS(state, data) {
-      state.leaveRequests = data;
-      localStorage.setItem("leaveRequests", JSON.stringify(data));
+    SET_EMPLOYEES(state, data) { state.employees = data; },
+    SET_PAYROLL(state, data) { state.payroll = data; },
+    SET_ATTENDANCE_RECORDS(state, data) { state.attendanceRecords = data; },
+    SET_LEAVE_REQUESTS(state, data) { state.leaveRequests = data; },
+
+    ADD_EMPLOYEE(state, employee) { state.employees.push(employee); },
+    DELETE_EMPLOYEE(state, id) {
+      state.employees = state.employees.filter(emp => emp.id !== id);
     },
-    ADD_LEAVE_REQUEST(state, request) {
-      state.leaveRequests.push(request);
-      localStorage.setItem("leaveRequests", JSON.stringify(state.leaveRequests));
-    },
+
+    ADD_ATTENDANCE(state, record) { state.attendanceRecords.push(record); },
+
+    ADD_LEAVE_REQUEST(state, request) { state.leaveRequests.push(request); },
     UPDATE_LEAVE_REQUEST(state, payload) {
       const req = state.leaveRequests.find(r => r.id === payload.id);
       if (req) req.status = payload.status;
-      localStorage.setItem("leaveRequests", JSON.stringify(state.leaveRequests));
     },
-    SET_ATTENDANCE(state, data) {
-      state.attendanceRecords = data;
-      localStorage.setItem("attendanceRecords", JSON.stringify(data));
-    },
-    ADD_ATTENDANCE(state, record) {
-      state.attendanceRecords.push(record);
-      localStorage.setItem("attendanceRecords", JSON.stringify(state.attendanceRecords));
-    }
+
+    SET_LOADING(state, status) { state.loading = status; },
+    SET_ERROR(state, error) { state.error = error; }
   },
 
   actions: {
-    loadLeaveRequestsFromStorage({ commit }) {
-      const data = loadFromStorage("leaveRequests");
-      if (data) commit("SET_LEAVE_REQUESTS", data);
+    async fetchEmployees({ commit }) {
+      commit("SET_LOADING", true);
+      try {
+        const res = await api.get("/employees");
+        commit("SET_EMPLOYEES", res.data);
+      } catch (err) {
+        commit("SET_ERROR", "Failed to load employees");
+        console.error(err);
+      } finally {
+        commit("SET_LOADING", false);
+      }
     },
-    addLeaveRequest({ commit }, request) {
-      const newRequest = { ...request, id: Date.now(), date: new Date().toLocaleDateString() };
-      commit("ADD_LEAVE_REQUEST", newRequest);
+
+    async fetchPayroll({ commit }) {
+      commit("SET_LOADING", true);
+      try {
+        const res = await api.get("/payroll");
+        commit("SET_PAYROLL", res.data);
+      } catch (err) {
+        commit("SET_ERROR", "Failed to load payroll");
+        console.error(err);
+      } finally {
+        commit("SET_LOADING", false);
+      }
     },
-    updateLeaveStatus({ commit }, payload) { commit("UPDATE_LEAVE_REQUEST", payload); },
-    loadAttendanceFromStorage({ commit }) {
-      const data = loadFromStorage("attendanceRecords");
-      if (data) commit("SET_ATTENDANCE", data);
+
+    async fetchAttendance({ commit }) {
+      commit("SET_LOADING", true);
+      try {
+        const res = await api.get("/attendance");
+        commit("SET_ATTENDANCE_RECORDS", res.data);
+      } catch (err) {
+        commit("SET_ERROR", "Failed to load attendance");
+        console.error(err);
+      } finally {
+        commit("SET_LOADING", false);
+      }
     },
-    addAttendance({ commit }, record) {
-      const newRecord = { ...record, id: Date.now(), date: new Date().toLocaleDateString() };
-      commit("ADD_ATTENDANCE", newRecord);
+
+    async fetchLeaveRequests({ commit }) {
+      commit("SET_LOADING", true);
+      try {
+        const res = await api.get("/leave-requests"); // ✅ fixed
+        commit("SET_LEAVE_REQUESTS", res.data);
+      } catch (err) {
+        commit("SET_ERROR", "Failed to load leave requests");
+        console.error(err);
+      } finally {
+        commit("SET_LOADING", false);
+      }
+    },
+
+    async addEmployee({ commit }, employee) {
+      try {
+        const res = await api.post("/employees", employee);
+        commit("ADD_EMPLOYEE", res.data);
+      } catch (err) {
+        commit("SET_ERROR", "Failed to add employee");
+        console.error(err);
+      }
+    },
+
+    async deleteEmployee({ commit }, id) {
+      try {
+        await api.delete(`/employees/${id}`);
+        commit("DELETE_EMPLOYEE", id);
+      } catch (err) {
+        commit("SET_ERROR", "Failed to delete employee");
+        console.error(err);
+      }
+    },
+
+    async addLeaveRequest({ commit }, request) {
+      try {
+        const res = await api.post("/leave-requests", request); // ✅ fixed
+        commit("ADD_LEAVE_REQUEST", res.data);
+      } catch (err) {
+        commit("SET_ERROR", "Failed to submit leave request");
+        console.error(err);
+      }
+    },
+
+    async updateLeaveStatus({ commit }, payload) {
+      try {
+        await api.put(`/leave-requests/${payload.id}`, { status: payload.status }); // ✅ fixed
+        commit("UPDATE_LEAVE_REQUEST", payload);
+      } catch (err) {
+        commit("SET_ERROR", "Failed to update leave request");
+        console.error(err);
+      }
     }
   },
 
   modules: {
     auth: {
       namespaced: true,
-      state() { return { isLoggedIn: localStorage.getItem("auth") === "true" }; },
-      getters: { isAuthenticated(state) { return state.isLoggedIn; } },
+      state() { return { user: null, isAuthenticated: false }; },
       mutations: {
-        login(state) { state.isLoggedIn = true; localStorage.setItem("auth", "true"); },
-        logout(state) { state.isLoggedIn = false; localStorage.removeItem("auth"); }
+        login(state, user) { state.user = user; state.isAuthenticated = true; },
+        logout(state) { state.user = null; state.isAuthenticated = false; }
+      },
+      actions: {
+        async login({ commit }, credentials) {
+          try {
+            const res = await api.post("/login", credentials);
+            if (res.data.success) {
+              localStorage.setItem("token", res.data.token);
+              commit("login", res.data.user);
+            } else {
+              throw new Error(res.data.message);
+            }
+          } catch (err) {
+            console.error("Login failed:", err);
+            throw err;
+          }
+        },
+        logout({ commit }) {
+          localStorage.removeItem("token");
+          commit("logout");
+        }
       }
     },
 
     reviews: {
       namespaced: true,
-      state() {
-        const stored = loadFromStorage('reviews');
-        return { all: Array.isArray(stored) ? stored : [...performanceReviews] };
-      },
-      getters: { allReviews(state) { return state.all; } },
+      state() { return { all: [] }; },
+      getters: { allReviews: state => state.all },
       mutations: {
-        ADD_REVIEW(state, review) {
-          state.all.push(review);
-          try {
-            localStorage.setItem('reviews', JSON.stringify(state.all));
-          } catch (e) { /* ignore storage errors */ }
-        },
-        SET_REVIEWS(state, reviews) {
-          state.all = reviews || [];
-          try { localStorage.setItem('reviews', JSON.stringify(state.all)); } catch(e){}
-        }
+        SET_REVIEWS(state, reviews) { state.all = reviews; },
+        ADD_REVIEW(state, review) { state.all.push(review); }
       },
       actions: {
-        addReview({ commit }, review) {
-          const newReview = {
-            ...review,
-            id: review.id || Date.now(),
-            date: review.date || new Date().toISOString()
-          };
-          commit('ADD_REVIEW', newReview);
+        async fetchReviews({ commit }) {
+          try {
+            const res = await api.get("/performance-reviews"); // ✅ fixed
+            commit("SET_REVIEWS", res.data);
+          } catch (err) {
+            console.error("Failed to load reviews:", err);
+          }
         },
-        loadReviews({ commit }) {
-          const stored = loadFromStorage('reviews');
-          if (Array.isArray(stored)) commit('SET_REVIEWS', stored);
+        async addReview({ commit }, review) {
+          try {
+            const res = await api.post("/performance-reviews", review); // ✅ fixed
+            commit("ADD_REVIEW", res.data);
+          } catch (err) {
+            console.error("Failed to add review:", err);
+          }
         }
       }
     }

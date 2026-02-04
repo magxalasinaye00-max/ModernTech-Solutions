@@ -1,177 +1,69 @@
 <template>
-  <div class="dashboard-container">
-    <!-- SIDEBAR -->
-    <aside :class="['sidebar', { collapsed: !sidebarOpen }]">
-      <button class="toggle-btn" @click="sidebarOpen = !sidebarOpen">{{ sidebarOpen ? '⟨' : '⟩' }}</button>
-      <ul v-show="sidebarOpen" class="sidebar-menu">
-        <li v-for="link in links" :key="link.name"><router-link :to="link.path">{{ link.name }}</router-link></li>
-        <li class="logout-box"><button class="logout-btn" @click="logoutUser">Logout</button></li>
-      </ul>
-    </aside>
+  <div class="payroll-container">
+    <div class="payroll-header">
+      <h3>Payroll</h3>
+    </div>
 
-    <!-- MAIN CONTENT -->
-    <main class="main-content">
-      <div class="payroll-container">
-        <div class="payroll-header">
-          <h3>Payroll Management</h3>
-          <p class="subtitle">View and manage employee salaries with automated calculations</p>
+    <div class="desktop-view">
+      <table class="payroll-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Salary</th>
+            <th>Hours</th>
+            <th>Leave</th>
+            <th>Final</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="p in payroll" :key="p.id" class="payroll-row">
+            <td>{{ p.employee_id }}</td>
+            <td>{{ p.name }}</td>
+            <td class="salary-cell">{{ formatCurrency(p.salary) }}</td>
+            <td>{{ p.hours_worked }}</td>
+            <td class="deduction-cell">{{ formatCurrency(p.leave_deductions) }}</td>
+            <td class="final-salary">{{ formatCurrency(p.final_salary) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile view -->
+    <div class="mobile-view">
+      <div v-for="p in payroll" :key="p.id" class="payroll-card">
+        <div class="card-header">
+          <span class="emp-badge">ID: {{ p.employee_id }}</span>
+          <strong>{{ p.name }}</strong>
         </div>
-
-        <!-- SEARCH & RESET -->
-        <div class="search-section">
-          <input v-model="search" type="text" class="search-box" placeholder="Search by employee name or ID..." />
-          <button class="btn-reset" @click="resetPayroll">Reset</button>
-        </div>
-
-        <!-- DESKTOP TABLE -->
-        <div class="desktop-view table-section">
-          <table class="payroll-table">
-            <thead>
-              <tr>
-                <th>Employee ID</th><th>Name</th><th>Dept</th><th>Salary</th>
-                <th>Hours</th><th>Leave</th><th>Deduction</th><th>Final</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in filtered" :key="row.employeeId">
-                <td>{{ row.employeeId }}</td>
-                <td>{{ row.name }}</td>
-                <td>{{ row.department }}</td>
-                <td class="salary-cell">R {{ formatCurrency(row.salary) }}</td>
-                <td><input type="number" min="0" max="200" v-model.number="row.hoursWorked" @input="calculateSalary(row)" class="input-field" /></td>
-                <td><input type="number" min="0" max="20" v-model.number="row.leaveDeductions" @input="calculateSalary(row)" class="input-field" /></td>
-                <td class="deduction-cell">R {{ formatCurrency(row.deductionAmount) }}</td>
-                <td class="final-salary">R {{ formatCurrency(row.finalSalary) }}</td>
-                <td>
-                  <button class="btn-view" @click="payslip = row">View</button>
-                  <button class="btn-download" @click="downloadPayslip(row)">PDF</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- MOBILE CARDS -->
-        <div class="mobile-view">
-          <div v-for="row in filtered" :key="row.employeeId" class="payroll-card">
-            <div class="card-header">
-              <h4>{{ row.name }}</h4>
-              <span class="emp-badge">ID: {{ row.employeeId }}</span>
-            </div>
-            <div class="card-body">
-              <div class="info-row" v-for="(val, key) in {Dept: row.department, 'Base Salary': 'R ' + formatCurrency(row.salary)}" :key="key">
-                <span class="label">{{ key }}:</span><span class="value">{{ val }}</span>
-              </div>
-
-              <div class="input-section">
-                <div class="input-group" v-for="field in ['hoursWorked','leaveDeductions']" :key="field">
-                  <label>{{ field==='hoursWorked'?'Hours Worked (max 200)':'Leave Days (max 20)' }}</label>
-                  <input type="number" :min="0" :max="field==='hoursWorked'?200:20" v-model.number="row[field]" @input="calculateSalary(row)" class="input-field" />
-                </div>
-              </div>
-
-              <div class="calculation-section">
-                <div class="calc-row">Deduction: R {{ formatCurrency(row.deductionAmount) }}</div>
-                <div class="calc-row final">Final: R {{ formatCurrency(row.finalSalary) }}</div>
-              </div>
-
-              <div class="card-actions">
-                <button class="btn-view" @click="payslip=row">View</button>
-                <button class="btn-download" @click="downloadPayslip(row)">PDF</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- PAYSLIP MODAL -->
-        <div v-if="payslip" class="modal">
-          <div class="modal-dialog">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title">Payslip — {{ payslip.name }}</h5>
-                <button class="btn-close" @click="payslip=null">×</button>
-              </div>
-              <div class="modal-body">
-                <div class="payslip-details" v-for="(val,key) in {
-                  'Employee ID': payslip.employeeId, Dept: payslip.department, 'Base Salary': 'R '+formatCurrency(payslip.salary),
-                  'Hours Worked': payslip.hoursWorked+' hrs','Leave Days': payslip.leaveDeductions+' days',
-                  'Deduction Amount':'R '+formatCurrency(payslip.deductionAmount), 'Final Salary':'R '+formatCurrency(payslip.finalSalary),
-                  'Period':'Monthly'
-                }" :key="key" :class="{'final': key==='Final Salary'}">
-                  <span class="detail-label">{{ key }}:</span><span class="detail-value">{{ val }}</span>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button class="btn btn-secondary" @click="payslip=null">Close</button>
-                <button class="btn btn-success" @click="downloadPayslip(payslip)">Download PDF</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
+        <div class="info-row">Salary: {{ formatCurrency(p.salary) }}</div>
+        <div class="info-row">Hours: {{ p.hours_worked }}</div>
+        <div class="info-row">Leave: {{ formatCurrency(p.leave_deductions) }}</div>
+        <div class="calc-row final">Final: {{ formatCurrency(p.final_salary) }}</div>
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
 <script>
-import { payrollData, employeeInformation } from "../assets/data/hrData";
-import { jsPDF } from "jspdf";
+import { mapState, mapActions } from "vuex";
 
 export default {
-  data() {
-    return {
-      search: "",
-      payslip: null,
-      rows: [],
-      sidebarOpen: true,
-      originalRows: [],
-      links: [
-        { name: "Employees", path: "/" },
-        { name: "Payroll", path: "/payroll" },
-        { name: "Attendance", path: "/attendance" },
-        { name: "Leave", path: "/leave" },
-        { name: "Performance Reviews", path: "/reviews" },
-      ]
-    };
+  name: "Payroll",
+  computed: {
+    ...mapState(["payroll"])
   },
   created() {
-    this.rows = payrollData.map(p => {
-      const emp = employeeInformation.find(e=>e.employeeId===p.employeeId);
-      const salary = emp?.salary||0;
-      const deductionAmount = this.calcDeduction(salary,p.leaveDeductions);
-      return { ...p, name: emp?.name, department: emp?.department, salary, deductionAmount, finalSalary: salary-deductionAmount };
-    });
-    this.originalRows = JSON.parse(JSON.stringify(this.rows));
-  },
-  computed: {
-    filtered() {
-      const q = this.search.toLowerCase();
-      return q ? this.rows.filter(r => (r.name||"").toLowerCase().includes(q) || r.employeeId.toString().includes(q)) : this.rows;
-    }
+    this.fetchPayroll();
   },
   methods: {
-    calcDeduction(salary,leave){ return Math.round((salary/20*leave)*100)/100; },
-    calculateSalary(emp){
-      emp.hoursWorked=Math.min(Math.max(emp.hoursWorked,0),200);
-      emp.leaveDeductions=Math.min(Math.max(emp.leaveDeductions,0),20);
-      emp.deductionAmount=this.calcDeduction(emp.salary,emp.leaveDeductions);
-      emp.finalSalary=Math.max(emp.salary-emp.deductionAmount,0);
-    },
-    resetPayroll(){ if(confirm("Are you sure?")) { this.rows=JSON.parse(JSON.stringify(this.originalRows)); this.search=""; } },
-    formatCurrency(v){ return typeof v==='number'?v.toFixed(2):'0.00'; },
-    logoutUser(){ this.$store.commit("auth/logout"); this.$router.push("/"); },
-    downloadPayslip(row){
-      const doc=new jsPDF(),w=doc.internal.pageSize.getWidth();let y=20;
-      doc.setFontSize(18); doc.text("ModernTech Solutions",14,y); y+=10;
-      doc.setFontSize(14); doc.text("PAYSLIP",14,y); y+=12;
-      doc.setFontSize(11); ["Employee Name: "+row.name,"Employee ID: "+row.employeeId,"Department: "+row.department,"Period: Monthly"].forEach(t=>{doc.text(t,14,y);y+=7;});
-      doc.setFontSize(10); doc.text("EARNINGS & DEDUCTIONS",14,y); y+=8;
-      [["Base Salary","R "+this.formatCurrency(row.salary)],["Hours Worked",row.hoursWorked+" hrs"],["Leave Days",row.leaveDeductions+" days"],["Deductions","- R "+this.formatCurrency(row.deductionAmount)]].forEach(([l,v])=>{doc.text(l,14,y);doc.text(v,w-30,y,{align:'right'});y+=6;});
-      y+=2; doc.setDrawColor(200); doc.line(14,y,w-14,y); y+=8;
-      doc.setFont(undefined,"bold"); doc.setFontSize(12); doc.text("FINAL SALARY:",14,y); doc.text("R "+this.formatCurrency(row.finalSalary),w-30,y,{align:'right'}); y+=12;
-      doc.setFont(undefined,"normal"); doc.setFontSize(9); doc.setTextColor(128); doc.text("Automated payslip",14,doc.internal.pageSize.getHeight()-10);
-      doc.save(`Payslip-${row.name?.replace(/\s+/g,'_')||row.employeeId}-${new Date().toISOString().split('T')[0]}.pdf`);
+    ...mapActions(["fetchPayroll"]),
+    formatCurrency(value) {
+      if (!value) return "R0.00";
+      return new Intl.NumberFormat("en-ZA", {
+        style: "currency",
+        currency: "ZAR"
+      }).format(value);
     }
   }
 };
