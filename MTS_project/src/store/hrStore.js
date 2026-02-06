@@ -1,7 +1,9 @@
 import { createStore } from "vuex";
 import api from "../api";
+import reviews from "./modules/reviews";
 
 export default createStore({
+
   state() {
     return {
       employees: [],
@@ -14,185 +16,276 @@ export default createStore({
   },
 
   getters: {
-    getEmployees: state => state.employees,
-    getPayroll: state => state.payroll,
-    getAttendanceRecords: state => state.attendanceRecords,
-    getLeaveRequests: state => state.leaveRequests,
-    isLoading: state => state.loading,
-    getError: state => state.error
+    getEmployees: s => s.employees,
+    getPayroll: s => s.payroll,
+    isLoading: s => s.loading,
+    getError: s => s.error
   },
 
   mutations: {
-    SET_EMPLOYEES(state, data) { state.employees = data; },
-    SET_PAYROLL(state, data) { state.payroll = data; },
-    SET_ATTENDANCE_RECORDS(state, data) { state.attendanceRecords = data; },
-    SET_LEAVE_REQUESTS(state, data) { state.leaveRequests = data; },
 
-    ADD_EMPLOYEE(state, employee) { state.employees.push(employee); },
+    SET_EMPLOYEES(state, data) {
+      state.employees = data;
+    },
+
+    SET_PAYROLL(state, data) {
+      state.payroll = data;
+    },
+
+    SET_ATTENDANCE(state, data) {
+      state.attendanceRecords = data;
+    },
+
+    SET_LEAVE(state, data) {
+      state.leaveRequests = data;
+    },
+
+    ADD_EMPLOYEE(state, emp) {
+      console.log("Mutation: ADD_EMPLOYEE called with:", emp);
+      state.employees.push({
+        id: emp.id,
+        name: emp.name,
+        position: emp.position,
+        department: emp.department,
+        employmentHistory: emp.employmentHistory || "",
+        contact: emp.contact
+      });
+      console.log("Mutation: employees array is now:", state.employees);
+    },
+
+    UPDATE_EMPLOYEE_ID(state, { tempId, realId }) {
+      const idx = state.employees.findIndex(e => e.id === tempId);
+      if (idx !== -1) {
+        state.employees[idx].id = realId;
+        console.log(`Mutation: Updated temp id ${tempId} -> ${realId}`);
+      }
+    },
+
     DELETE_EMPLOYEE(state, id) {
-      state.employees = state.employees.filter(emp => emp.id !== id);
+      console.log("Mutation: DELETE_EMPLOYEE called with id:", id);
+      const initialLength = state.employees.length;
+      state.employees = state.employees.filter(e => e.id !== id);
+      console.log(`Mutation: Deleted employee. Was ${initialLength}, now ${state.employees.length}`);
     },
 
-    ADD_ATTENDANCE(state, record) { state.attendanceRecords.push(record); },
-
-    ADD_LEAVE_REQUEST(state, request) { state.leaveRequests.push(request); },
-    UPDATE_LEAVE_REQUEST(state, payload) {
-      const req = state.leaveRequests.find(r => r.id === payload.id);
-      if (req) req.status = payload.status;
+    ADD_LEAVE_REQUEST(state, leaveReq) {
+      console.log("Mutation: ADD_LEAVE_REQUEST called with:", leaveReq);
+      state.leaveRequests.push(leaveReq);
+      console.log("Mutation: leaveRequests array is now:", state.leaveRequests);
     },
 
-    SET_LOADING(state, status) { state.loading = status; },
-    SET_ERROR(state, error) { state.error = error; }
+    UPDATE_LEAVE_REQUEST(state, updatedReq) {
+      console.log("Mutation: UPDATE_LEAVE_REQUEST called with:", updatedReq);
+      const idx = state.leaveRequests.findIndex(r => r.id === updatedReq.id);
+      if (idx !== -1) {
+        state.leaveRequests[idx] = updatedReq;
+        console.log("Mutation: Updated leave request at index", idx);
+      }
+    },
+
+    SET_LOADING(state, val) {
+      state.loading = val;
+    },
+
+    SET_ERROR(state, err) {
+      state.error = err;
+    }
   },
 
   actions: {
+
+    /* EMPLOYEES */
+
     async fetchEmployees({ commit }) {
       commit("SET_LOADING", true);
+
       try {
         const res = await api.get("/employees");
         commit("SET_EMPLOYEES", res.data);
-      } catch (err) {
+      } catch {
         commit("SET_ERROR", "Failed to load employees");
-        console.error(err);
-      } finally {
-        commit("SET_LOADING", false);
+      }
+
+      commit("SET_LOADING", false);
+    },
+
+    async addEmployee({ commit }, emp) {
+      // Optimistic add: insert a temporary item so UI updates immediately
+      const tempId = `tmp_${Date.now()}`;
+      const tempEmp = {
+        id: tempId,
+        name: emp.name,
+        position: emp.position,
+        department: emp.department,
+        employmentHistory: emp.employmentHistory || "",
+        contact: emp.contact
+      };
+
+      commit("ADD_EMPLOYEE", tempEmp);
+
+      try {
+        console.log("Store: Adding employee (API)", emp);
+        const res = await api.post("/employees", emp);
+        console.log("Store: API response for add", res.data);
+        // replace temp id with real id
+        commit("UPDATE_EMPLOYEE_ID", { tempId, realId: res.data.id });
+        console.log("Store: UPDATE_EMPLOYEE_ID committed");
+        return res.data;
+      } catch (err) {
+        console.error("Store: Add employee error:", err);
+        // rollback: remove the temp employee
+        commit("DELETE_EMPLOYEE", tempId);
+        commit("SET_ERROR", "Failed to add employee: " + err.message);
+        throw err;
       }
     },
+
+    async deleteEmployee({ commit, dispatch }, id) {
+      // Optimistic delete: remove locally first
+      const existing = [...this.state.employees];
+      commit("DELETE_EMPLOYEE", id);
+
+      try {
+        console.log("Store: Deleting employee with id:", id);
+        const res = await api.delete(`/employees/${id}`);
+        console.log("Store: API response for delete", res.data);
+        return res.data;
+      } catch (err) {
+        console.error("Store: Delete employee error:", err);
+        // rollback: restore entire list from server to be safe
+        try {
+          const res = await api.get("/employees");
+          commit("SET_EMPLOYEES", res.data);
+        } catch (fetchErr) {
+          console.error("Store: Failed to reload employees after delete failure", fetchErr);
+        }
+        commit("SET_ERROR", "Failed to delete employee: " + err.message);
+        throw err;
+      }
+    },
+
+    /* PAYROLL */
 
     async fetchPayroll({ commit }) {
       commit("SET_LOADING", true);
+
       try {
         const res = await api.get("/payroll");
         commit("SET_PAYROLL", res.data);
-      } catch (err) {
+      } catch {
         commit("SET_ERROR", "Failed to load payroll");
-        console.error(err);
-      } finally {
-        commit("SET_LOADING", false);
       }
+
+      commit("SET_LOADING", false);
     },
+
+    /* ATTENDANCE */
 
     async fetchAttendance({ commit }) {
       commit("SET_LOADING", true);
+
       try {
         const res = await api.get("/attendance");
-        commit("SET_ATTENDANCE_RECORDS", res.data);
-      } catch (err) {
+        commit("SET_ATTENDANCE", res.data);
+      } catch {
         commit("SET_ERROR", "Failed to load attendance");
-        console.error(err);
-      } finally {
-        commit("SET_LOADING", false);
       }
+
+      commit("SET_LOADING", false);
     },
+
+    /* LEAVE REQUESTS */
 
     async fetchLeaveRequests({ commit }) {
       commit("SET_LOADING", true);
+
       try {
-        const res = await api.get("/leave-requests"); // ✅ fixed
-        commit("SET_LEAVE_REQUESTS", res.data);
-      } catch (err) {
+        const res = await api.get("/leave-requests");
+        commit("SET_LEAVE", res.data);
+      } catch {
         commit("SET_ERROR", "Failed to load leave requests");
-        console.error(err);
-      } finally {
-        commit("SET_LOADING", false);
       }
+
+      commit("SET_LOADING", false);
     },
 
-    async addEmployee({ commit }, employee) {
+    async addLeaveRequest({ commit }, leaveData) {
       try {
-        const res = await api.post("/employees", employee);
-        commit("ADD_EMPLOYEE", res.data);
-      } catch (err) {
-        commit("SET_ERROR", "Failed to add employee");
-        console.error(err);
-      }
-    },
-
-    async deleteEmployee({ commit }, id) {
-      try {
-        await api.delete(`/employees/${id}`);
-        commit("DELETE_EMPLOYEE", id);
-      } catch (err) {
-        commit("SET_ERROR", "Failed to delete employee");
-        console.error(err);
-      }
-    },
-
-    async addLeaveRequest({ commit }, request) {
-      try {
-        const res = await api.post("/leave-requests", request); // ✅ fixed
+        console.log("Store: Adding leave request:", leaveData);
+        const res = await api.post("/leave-requests", leaveData);
+        console.log("Store: API response for add leave:", res.data);
         commit("ADD_LEAVE_REQUEST", res.data);
+        return res.data;
       } catch (err) {
-        commit("SET_ERROR", "Failed to submit leave request");
-        console.error(err);
+        console.error("Store: Add leave request error:", err);
+        commit("SET_ERROR", "Failed to add leave request");
+        throw err;
       }
     },
 
-    async updateLeaveStatus({ commit }, payload) {
+    async updateLeaveStatus({ commit }, { id, status }) {
       try {
-        await api.put(`/leave-requests/${payload.id}`, { status: payload.status }); // ✅ fixed
-        commit("UPDATE_LEAVE_REQUEST", payload);
+        console.log("Store: Updating leave request:", { id, status });
+        const res = await api.patch(`/leave-requests/${id}`, { status });
+        console.log("Store: API response for update leave:", res.data);
+        commit("UPDATE_LEAVE_REQUEST", res.data);
+        return res.data;
       } catch (err) {
+        console.error("Store: Update leave request error:", err);
         commit("SET_ERROR", "Failed to update leave request");
-        console.error(err);
+        throw err;
       }
     }
   },
 
   modules: {
+
+    /* REVIEWS MODULE */
+
+    reviews,
+
+    /* AUTH MODULE */
+
     auth: {
       namespaced: true,
-      state() { return { user: null, isAuthenticated: false }; },
-      mutations: {
-        login(state, user) { state.user = user; state.isAuthenticated = true; },
-        logout(state) { state.user = null; state.isAuthenticated = false; }
+
+      state() {
+        return {
+          user: null,
+          isAuthenticated: false
+        };
       },
-      actions: {
-        async login({ commit }, credentials) {
-          try {
-            const res = await api.post("/login", credentials);
-            if (res.data.success) {
-              localStorage.setItem("token", res.data.token);
-              commit("login", res.data.user);
-            } else {
-              throw new Error(res.data.message);
-            }
-          } catch (err) {
-            console.error("Login failed:", err);
-            throw err;
-          }
+
+      mutations: {
+        login(state, user) {
+          state.user = user;
+          state.isAuthenticated = true;
         },
+
+        logout(state) {
+          state.user = null;
+          state.isAuthenticated = false;
+        }
+      },
+
+      actions: {
+
+        async login({ commit }, creds) {
+
+          const res = await api.post("/login", creds);
+
+          if (!res.data.success) {
+            throw new Error("Login failed");
+          }
+
+          localStorage.setItem("token", res.data.token);
+
+          commit("login", res.data.user);
+        },
+
         logout({ commit }) {
           localStorage.removeItem("token");
           commit("logout");
-        }
-      }
-    },
-
-    reviews: {
-      namespaced: true,
-      state() { return { all: [] }; },
-      getters: { allReviews: state => state.all },
-      mutations: {
-        SET_REVIEWS(state, reviews) { state.all = reviews; },
-        ADD_REVIEW(state, review) { state.all.push(review); }
-      },
-      actions: {
-        async fetchReviews({ commit }) {
-          try {
-            const res = await api.get("/performance-reviews"); // ✅ fixed
-            commit("SET_REVIEWS", res.data);
-          } catch (err) {
-            console.error("Failed to load reviews:", err);
-          }
-        },
-        async addReview({ commit }, review) {
-          try {
-            const res = await api.post("/performance-reviews", review); // ✅ fixed
-            commit("ADD_REVIEW", res.data);
-          } catch (err) {
-            console.error("Failed to add review:", err);
-          }
         }
       }
     }

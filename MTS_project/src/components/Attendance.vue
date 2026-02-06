@@ -1,41 +1,44 @@
- <template>
-  <div class="employee-grid" v-if="!loading">
-    <div class="employee-card" v-for="e in employees" :key="e.id">
-      <h3>{{ e.name }}</h3>
-      <p>ID: {{ e.id }}</p>
+<template>
+  <div>
+    <h2>Attendance Records</h2>
+    <div class="employee-grid" v-if="!loading">
+      <div class="employee-card" v-for="e in employees" :key="e.id">
+        <h3>{{ e.name }}</h3>
+        <p>ID: {{ e.id }}</p>
 
-      <div class="section">
-        <h4>Attendance</h4>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="att in attendanceRecords.filter(a => a.employee_id === e.id)"
-              :key="att.id"
-            >
-              <td>{{ formatDate(att.date) }}</td>
-              <td :class="statusClass(att.status)">{{ att.status }}</td>
-            </tr>
-            <tr v-if="attendanceRecords.filter(a => a.employee_id === e.id).length === 0">
-              <td colspan="2" class="empty-msg">No records found</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="section">
+          <h4>Attendance</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="att in attendanceRecords.filter(a => a.employeeId === e.id)"
+                :key="att.id"
+              >
+                <td>{{ formatDate(att.date) }}</td>
+                <td :class="statusClass(att.status)">{{ att.status }}</td>
+              </tr>
+              <tr v-if="attendanceRecords.filter(a => a.employeeId === e.id).length === 0">
+                <td colspan="2" class="empty-msg">No records found</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <p v-if="employees.length === 0" class="empty-msg">
+        No employees found.
+      </p>
     </div>
 
-    <p v-if="employees.length === 0" class="empty-msg">
-      No employees found.
-    </p>
+    <div v-else class="loading">Loading attendance...</div>
+    <p v-if="error" class="error">{{ error }}</p>
   </div>
-
-  <div v-else class="loading">Loading attendance...</div>
-  <p v-if="error" class="error">{{ error }}</p>
 </template>
 
 <script>
@@ -53,12 +56,15 @@ export default {
   },
   async created() {
     try {
+      console.log("Attendance: Starting fetch...");
       await Promise.all([this.fetchEmployees(), this.fetchAttendance()]);
+      console.log("Attendance: Fetch complete", { employees: this.employees.length, attendance: this.attendanceRecords.length });
     } catch (err) {
       this.error = "Failed to load attendance data.";
-      console.error(err);
+      console.error("Attendance error:", err);
     } finally {
       this.loading = false;
+      console.log("Attendance: Loading set to false");
     }
   },
   methods: {

@@ -1,7 +1,7 @@
 <template>
   <div class="pr-page">
     <div class="header">
-      <h3>Performance Reviews</h3>
+      <h3>Perfomance Reviews</h3>
       <p class="muted">Track employee ratings and feedback</p>
     </div>
 
@@ -68,8 +68,8 @@
 
     <!-- Chart Section -->
     <div class="card chart-card mt">
-      <h4>Performance Overview</h4>
-      <PerformanceChart />
+      <h4>Perfomance Overview</h4>
+      <PerfomanceChart />
     </div>
   </div>
 </template>
@@ -80,7 +80,7 @@ import PerfomanceChart from "./PerfomanceChart.vue";
 
 export default {
   name: "PerfomanceReviews",
-  components: { PerfomanceChart },
+  components: { PerfomanceChart: PerfomanceChart },
   data() {
     return {
       selectedEmployee: "",
@@ -100,6 +100,7 @@ export default {
     try {
       await this.fetchEmployees();
       await this.$store.dispatch("reviews/fetchReviews");
+      console.log("Reviews loaded:", this.reviews);
     } catch (err) {
       this.errorMessage = "Failed to load reviews.";
       console.error(err);
@@ -148,6 +149,173 @@ export default {
 </script>
 
 <style scoped>
-.error { color: red; margin-top: 8px; font-size: 0.9rem; }
-.mt { margin-top: 16px; }
+.pr-page {
+  padding: 20px;
+}
+
+.header {
+  margin-bottom: 30px;
+}
+
+.header h3 {
+  font-size: 28px;
+  margin: 0;
+  color: #1e1e2f;
+}
+
+.muted {
+  color: #999;
+  margin: 5px 0 0 0;
+  font-size: 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.col {
+  flex: 1;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #1e1e2f;
+}
+
+.chart-card {
+  margin-top: 30px;
+  text-align: center;
+}
+
+.history {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.history th,
+.history td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.history th {
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #333;
+}
+
+.history tbody tr:hover {
+  background: #fafafa;
+}
+
+.comments {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rating-pill {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+.rating-pill[data-rating="5"] {
+  background: #10b981;
+}
+
+.rating-pill[data-rating="4"] {
+  background: #3b82f6;
+}
+
+.rating-pill[data-rating="3"] {
+  background: #f59e0b;
+}
+
+.rating-pill[data-rating="2"] {
+  background: #ef5350;
+}
+
+.rating-pill[data-rating="1"] {
+  background: #dc2626;
+}
+
+.input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+textarea.input {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.btn.primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn.primary:hover {
+  background: #2563eb;
+}
+
+.error {
+  color: #dc2626;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.mt {
+  margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

@@ -1,6 +1,14 @@
 <template>
- <RouterView></RouterView>
+  <MainLayout></MainLayout>
 </template>
 
-<script></script>
+<script>
+import MainLayout from './layouts/MainLayout.vue';
+
+export default {
+  components: {
+    MainLayout
+  }
+};
+</script>
     

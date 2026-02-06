@@ -33,6 +33,7 @@
         </div>
       </div>
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+      <p v-if="successMessage" class="success">{{ successMessage }}</p>
     </div>
 
     <!-- Requests Table -->
@@ -54,7 +55,7 @@
           <td colspan="5" class="text-muted text-center">No leave requests found.</td>
         </tr>
         <tr v-for="req in leaveRequests" :key="req.id">
-          <td>{{ getEmployeeName(req.employee_id) }}</td>
+          <td>{{ getEmployeeName(req.employeeId) }}</td>
           <td>{{ req.reason }}</td>
           <td>{{ new Date(req.date).toLocaleDateString() }}</td>
           <td>
@@ -86,7 +87,8 @@ export default {
       reason: "",
       leaveDate: "",
       loading: true,
-      errorMessage: null
+      errorMessage: null,
+      successMessage: null
     };
   },
   computed: {
@@ -114,25 +116,37 @@ export default {
         return;
       }
       try {
+        console.log("Component: Submitting leave request");
         await this.addLeaveRequest({
           employee_id: this.selectedEmployee,
           reason: this.reason,
           date: this.leaveDate,
           status: "Pending"
         });
+        this.successMessage = "Leave request submitted successfully!";
+        this.errorMessage = null;
+        setTimeout(() => {
+          this.successMessage = null;
+        }, 3000);
         this.selectedEmployee = "";
         this.reason = "";
         this.leaveDate = "";
       } catch (err) {
-        this.errorMessage = "Error submitting request.";
+        this.errorMessage = "Error submitting request: " + err.message;
         console.error(err);
       }
     },
     async updateStatus(id, newStatus) {
       try {
+        console.log("Component: Updating leave request status");
         await this.updateLeaveStatus({ id, status: newStatus });
+        this.successMessage = "Leave request updated successfully!";
+        this.errorMessage = null;
+        setTimeout(() => {
+          this.successMessage = null;
+        }, 3000);
       } catch (err) {
-        this.errorMessage = "Error updating status.";
+        this.errorMessage = "Error updating status: " + err.message;
         console.error(err);
       }
     },
@@ -156,4 +170,5 @@ export default {
 .status-pill.denied { background: #ef4444; }
 .status-pill.pending { background: #f59e0b; }
 .error { color: red; margin-top: 8px; font-size: 0.9rem; }
+.success { color: green; margin-top: 8px; font-size: 0.9rem; font-weight: bold; }
 </style>

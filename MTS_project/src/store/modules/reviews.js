@@ -1,34 +1,42 @@
+import api from "../../api";
+
 export default {
     namespaced: true,
 
     state: {
-        reviews: JSON.parse(localStorage.getItem('reviews')) || []
+        all: []
     },
     mutations: {
         SET_REVIEWS(state, reviews) {
-            state.reviews = reviews;
-            localStorage.setItem("reviews", JSON.stringify(reviews));
+            state.all = reviews;
         },
-        ADD_REVIEWS(state, review) {
-            state.reviews.push(review);
-            localStorage.setItem("reviews", JSON.stringify(state.reviews));
+        ADD_REVIEW(state, review) {
+            state.all.push(review);
         }
     },
 
     actions: {
-        loadReviews({ commit, rootState }) {
-            const employeeId = rootState.data.reviews || [];
-            if (!JSON.parse(localStorage.getItem("reviews")).length) {
-                commit("SET_REVIEWS", employeeId);
+        async fetchReviews({ commit }) {
+            try {
+                const res = await api.get("/performance-reviews");
+                commit("SET_REVIEWS", res.data);
+            } catch (err) {
+                console.error("Failed to fetch reviews", err);
             }
         },
-        addReview({ commit }, review) {
-            commit("ADD_REVIEWS", review);
+        async addReview({ commit }, review) {
+            try {
+                const res = await api.post("/performance-reviews", review);
+                commit("ADD_REVIEW", res.data);
+            } catch (err) {
+                console.error("Failed to add review", err);
+                throw err;
+            }
         }
     },
 
     getters: {
-    allReviews: (state) => state.reviews,
-    reviewsByEmployee: (state) => (id) => state.reviews.filter(r => r.employeeId === id)
-  }
+        allReviews: (state) => state.all,
+        reviewsByEmployee: (state) => (id) => state.all.filter(r => r.employee_id === id)
+    }
 };

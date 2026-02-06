@@ -1,103 +1,82 @@
 <template>
-  <div class="dashboard-container">
-    <!-- SIDEBAR -->
-    <aside :class="['sidebar', { collapsed: !sidebarOpen }]">
-      <button class="toggle-btn" @click="toggleSidebar">
-        {{ sidebarOpen ? '⟨' : '⟩' }}
-      </button>
+  <div>
+    <!-- HEADER -->
+    <div class="header-section">
+      <h2 class="title">ModernTech HR Dashboard</h2>
+      <p class="subtitle">Manage employees, payroll, attendance, and more.</p>
+    </div>
 
-      <ul v-show="sidebarOpen" class="sidebar-menu">
-        <li><router-link to="/">Employees</router-link></li>
-        <li><router-link to="/payroll">Payroll</router-link></li>
-        <li><router-link to="/attendance">Attendance</router-link></li>
-        <li><router-link to="/leave">Leave</router-link></li>
-        <li><router-link to="/reviews">Performance Reviews</router-link></li>
+    <!-- SEARCH BAR -->
+    <div class="search-section">
+      <input
+        type="text"
+        v-model="searchQuery"
+        placeholder="Search employees..."
+        class="search-box"
+      />
+    </div>
 
-        <li class="logout-box">
-          <button class="logout-btn" @click="logoutUser">Logout</button>
-        </li>
-      </ul>
-    </aside>
+    <!-- EMPLOYEE TABLE -->
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h4 class="card-title mb-3">Employee Directory</h4>
 
-    <!-- MAIN CONTENT AREA -->
-    <main class="main-content">
-      <!-- HEADER -->
-      <div class="header-section">
-        <h2 class="title">ModernTech HR Dashboard</h2>
-        <p class="subtitle">Manage employees, payroll, attendance, and more.</p>
+        <div v-if="loading" class="loading">Loading employees...</div>
+        <p v-if="error" class="error">{{ error }}</p>
+
+        <table v-if="!loading && employees.length > 0" class="table table-hover modern-table text-center">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Position</th>
+              <th>Department</th>
+              <th>History</th>
+              <th>Contact</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr v-for="emp in filteredEmployees" :key="emp.id">
+              <td>{{ emp.id }}</td>
+              <td>{{ emp.name }}</td>
+              <td>{{ emp.position }}</td>
+              <td>{{ emp.department }}</td>
+              <td>{{ emp.employmentHistory }}</td>
+              <td>{{ emp.contact }}</td>
+              <td>
+                <button class="btn btn-danger btn-sm" @click="handleDeleteEmployee(emp.id)">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p v-if="!loading && filteredEmployees.length === 0" class="text-muted text-center mt-3">
+          No employees match your search.
+        </p>
       </div>
+    </div>
 
-      <!-- SEARCH BAR -->
-      <div class="search-section">
-        <input
-          type="text"
-          v-model="searchQuery"
-          placeholder="Search employees..."
-          class="search-box"
-        />
+    <!-- ADD EMPLOYEE -->
+    <div class="card mt-4 p-3 shadow-sm">
+      <h4 class="mb-3">Add New Employee</h4>
+      <div class="add-employee-grid">
+        <input v-model="newName" placeholder="Name" class="form-control" />
+        <input v-model="newPosition" placeholder="Position" class="form-control" />
+        <input v-model="newDepartment" placeholder="Department" class="form-control" />
+        <input v-model="employmentHistory" placeholder="employment history" class="form-control" />
+        <input v-model="newContact" placeholder="Contact" class="form-control" />
+
+        <button class="btn btn-primary" @click="handleAddEmployee">
+          Add Employee
+        </button>
       </div>
+    </div>
 
-      <!-- EMPLOYEE TABLE -->
-      <div class="card shadow-sm mt-3">
-        <div class="card-body">
-          <h4 class="card-title mb-3">Employee Directory</h4>
-
-          <div v-if="loading" class="loading">Loading employees...</div>
-          <p v-if="error" class="error">{{ error }}</p>
-
-          <table v-if="!loading && employees.length > 0" class="table table-hover modern-table text-center">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Position</th>
-                <th>Department</th>
-                <th>History</th>
-                <th>Contact</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              <tr v-for="emp in filteredEmployees" :key="emp.id">
-                <td>{{ emp.id }}</td>
-                <td>{{ emp.name }}</td>
-                <td>{{ emp.position }}</td>
-                <td>{{ emp.department }}</td>
-                <td>{{ emp.employmentHistory }}</td>
-                <td>{{ emp.contact }}</td>
-                <td>
-                  <button class="btn btn-danger btn-sm" @click="handleDeleteEmployee(emp.id)">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <p v-if="!loading && filteredEmployees.length === 0" class="text-muted text-center mt-3">
-            No employees match your search.
-          </p>
-        </div>
-      </div>
-
-      <!-- ADD EMPLOYEE -->
-      <div class="card mt-4 p-3 shadow-sm">
-        <h4 class="mb-3">Add New Employee</h4>
-        <div class="add-employee-grid">
-          <input v-model="newName" placeholder="Name" class="form-control" />
-          <input v-model="newPosition" placeholder="Position" class="form-control" />
-          <input v-model="newDepartment" placeholder="Department" class="form-control" />
-          <input v-model="newContact" placeholder="Contact" class="form-control" />
-
-          <button class="btn btn-primary" @click="handleAddEmployee">
-            Add Employee
-          </button>
-        </div>
-      </div>
-
-      <router-view />
-    </main>
+    <router-view />
   </div>
 </template>
 
@@ -112,8 +91,8 @@ export default {
       newName: "",
       newPosition: "",
       newDepartment: "",
+      employmentHistory:"",
       newContact: "",
-      sidebarOpen: true,
       loading: true,
       error: null
     };
@@ -131,11 +110,24 @@ export default {
   async created() {
     try {
       await this.fetchEmployees();
+      console.log("Dashboard: Employees loaded:", this.employees);
     } catch (err) {
       this.error = "Failed to load employees.";
       console.error(err);
     } finally {
       this.loading = false;
+    }
+  },
+  watch: {
+    employees: {
+      handler(newVal) {
+        console.log("Dashboard: employees watcher triggered, new value:", newVal);
+      }
+    },
+    filteredEmployees: {
+      handler(newVal) {
+        console.log("Dashboard: filteredEmployees changed:", newVal.length, "employees");
+      }
     }
   },
   methods: {
@@ -147,39 +139,50 @@ export default {
       }
 
       try {
-        await this.addEmployee({
+        console.log("Adding employee:", {
+          name: this.newName,
+          position: this.newPosition,
+          department: this.newDepartment,
+          contact: this.newContact
+        });
+        
+        const result = await this.addEmployee({
           name: this.newName,
           position: this.newPosition,
           department: this.newDepartment,
           contact: this.newContact,
-          employmentHistory: "New hire"
+          employmentHistory: this.employmentHistory || "New hire"
         });
+
+        console.log("Employee added successfully:", result);
 
         // Reset form
         this.newName = "";
         this.newPosition = "";
         this.newDepartment = "";
         this.newContact = "";
+        this.employmentHistory = "";
+        this.error = null;
+        alert("Employee added successfully!");
       } catch (err) {
-        this.error = "Error adding employee.";
-        console.error(err);
+        this.error = "Error adding employee: " + (err.message || err);
+        console.error("Error adding employee:", err);
+        alert("Error adding employee. Check console for details.");
       }
     },
     async handleDeleteEmployee(id) {
-      try {
-        await this.deleteEmployee(id);
-      } catch (err) {
-        this.error = "Error deleting employee.";
-        console.error(err);
+      if (!confirm("Are you sure you want to delete this employee?")) {
+        return;
       }
-    },
-    toggleSidebar() {
-      this.sidebarOpen = !this.sidebarOpen;
-    },
-    logoutUser() {
-      // Clear token and redirect
-      localStorage.removeItem("token");
-      window.location.href = "/";
+      try {
+        console.log("Deleting employee with id:", id);
+        await this.deleteEmployee(id);
+        console.log("Employee deleted successfully");
+      } catch (err) {
+        this.error = "Error deleting employee: " + (err.message || err);
+        console.error("Error deleting employee:", err);
+        alert("Error deleting employee. Check console for details.");
+      }
     }
   }
 };

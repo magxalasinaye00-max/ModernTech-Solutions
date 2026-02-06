@@ -1,46 +1,34 @@
 <template>
   <div class="payroll-container">
     <div class="payroll-header">
-      <h3>Payroll</h3>
+      <h3>Payroll Management</h3>
     </div>
 
-    <div class="desktop-view">
+    <div v-if="payroll.length > 0" class="desktop-view">
       <table class="payroll-table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Name</th>
+            <th>Employee Name</th>
             <th>Salary</th>
-            <th>Hours</th>
-            <th>Leave</th>
-            <th>Final</th>
+            <th>Hours Worked</th>
+            <th>Leave Deductions</th>
+            <th>Final Salary</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in payroll" :key="p.id" class="payroll-row">
-            <td>{{ p.employee_id }}</td>
-            <td>{{ p.name }}</td>
-            <td class="salary-cell">{{ formatCurrency(p.salary) }}</td>
-            <td>{{ p.hours_worked }}</td>
-            <td class="deduction-cell">{{ formatCurrency(p.leave_deductions) }}</td>
-            <td class="final-salary">{{ formatCurrency(p.final_salary) }}</td>
+          <tr v-for="record in payroll" :key="record.id" class="payroll-row">
+            <td>{{ record.name }}</td>
+            <td class="salary-cell">{{ formatCurrency(record.salary) }}</td>
+            <td>{{ record.hoursWorked }}</td>
+            <td class="deduction-cell">{{ formatCurrency(record.leaveDeductions) }}</td>
+            <td class="final-salary">{{ formatCurrency(record.finalSalary) }}</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Mobile view -->
-    <div class="mobile-view">
-      <div v-for="p in payroll" :key="p.id" class="payroll-card">
-        <div class="card-header">
-          <span class="emp-badge">ID: {{ p.employee_id }}</span>
-          <strong>{{ p.name }}</strong>
-        </div>
-        <div class="info-row">Salary: {{ formatCurrency(p.salary) }}</div>
-        <div class="info-row">Hours: {{ p.hours_worked }}</div>
-        <div class="info-row">Leave: {{ formatCurrency(p.leave_deductions) }}</div>
-        <div class="calc-row final">Final: {{ formatCurrency(p.final_salary) }}</div>
-      </div>
+    <div v-else-if="payroll.length === 0" class="empty-msg">
+      <p>No payroll data available</p>
     </div>
   </div>
 </template>
@@ -50,20 +38,28 @@ import { mapState, mapActions } from "vuex";
 
 export default {
   name: "Payroll",
+
   computed: {
     ...mapState(["payroll"])
   },
+
   created() {
     this.fetchPayroll();
   },
+
   methods: {
     ...mapActions(["fetchPayroll"]),
+
     formatCurrency(value) {
-      if (!value) return "R0.00";
+
+      if (value === null || value === undefined) {
+        return "R0.00";
+      }
+
       return new Intl.NumberFormat("en-ZA", {
         style: "currency",
         currency: "ZAR"
-      }).format(value);
+      }).format(Number(value));
     }
   }
 };
